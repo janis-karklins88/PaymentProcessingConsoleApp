@@ -26,15 +26,19 @@ public class ConsoleMenu {
         while(running){
             printMenu();
 
-            int option = Integer.parseInt(scanner.nextLine());
+            try {
+                int option = Integer.parseInt(scanner.nextLine());
 
-            switch (option){
-                case 1 -> createOrder();
-                case 2 -> addItem();
-                case 3 -> viewOrder();
-                case 4 -> payOrder();
-                case 0 -> running = false;
-                default -> System.out.println("Invalid option");
+                switch (option){
+                    case 1 -> createOrder();
+                    case 2 -> addItem();
+                    case 3 -> viewOrder();
+                    case 4 -> payOrder();
+                    case 0 -> running = false;
+                    default -> System.out.println("Invalid option");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid option");
             }
         }
     }
