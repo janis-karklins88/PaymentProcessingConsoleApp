@@ -14,7 +14,14 @@ public class CreditCardPayment extends PaymentMethod {
 
     @Override
     public PaymentResult processPayment(double amount) {
-        // TODO: add basic validations
+        if (cardNumber == null || cardNumber.isBlank() || cardNumber.length() < 4 || !cardNumber.matches("\\d+")) {
+            return new PaymentResult(false, "Card number must contain at least 4 digits.");
+        }
+
+        if (cardHolderName == null || cardHolderName.isBlank()) {
+            return new PaymentResult(false, "Card holder name must be provided.");
+        }
+
         return new PaymentResult(true, "Paid " + amount + " using credit card ending with " + cardNumber.substring(cardNumber.length() - 4));
     }
 }

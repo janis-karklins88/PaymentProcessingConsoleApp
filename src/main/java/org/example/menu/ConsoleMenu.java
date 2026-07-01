@@ -7,12 +7,14 @@ import org.example.model.PaymentResult;
 import org.example.payment.PaymentMethod;
 import org.example.payment.PaymentMethodFactory;
 import org.example.payment.PaymentProcessor;
+import org.example.repository.OrderRepository;
 
 import java.util.Scanner;
 
 public class ConsoleMenu {
     private final Scanner scanner = new Scanner(System.in);
     private final PaymentProcessor paymentProcessor = new PaymentProcessor();
+    private final OrderRepository orderRepository = new OrderRepository();
 
     private Order currentOrder;
 
@@ -41,30 +43,42 @@ public class ConsoleMenu {
         System.out.println("Customer name:");
         String customerName = scanner.nextLine();
 
-        currentOrder = Order.builder()
-                .customerName(customerName)
-                .build();
-        System.out.println("Order created for " + customerName);
+        try {
+            currentOrder = Order.builder()
+                    .customerName(customerName)
+                    .build();
+            System.out.println("Order created for " + customerName);
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+        }
     }
 
     private void addItem(){
-        // TODO: check if order exists
+        if (!hasCurrentOrder()) {
+            return;
+        }
 
-        System.out.println("Item name:");
-        String itemName = scanner.nextLine();
+        try {
+            System.out.println("Item name:");
+            String itemName = scanner.nextLine();
 
-        System.out.println("Price:");
-        double price = Double.parseDouble(scanner.nextLine());
+            System.out.println("Price:");
+            double price = Double.parseDouble(scanner.nextLine());
 
-        System.out.println("Quantity:");
-        int quantity = Integer.parseInt(scanner.nextLine());
+            System.out.println("Quantity:");
+            int quantity = Integer.parseInt(scanner.nextLine());
 
-        currentOrder.addItem(new OrderItem(itemName, price, quantity));
-        System.out.println("Item added to order");
+            currentOrder.addItem(new OrderItem(itemName, price, quantity));
+            System.out.println("Item added to order");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println(e.getMessage());
+        }
     }
 
     private void viewOrder(){
-        // TODO: check if order exists
+        if (!hasCurrentOrder()) {
+            return;
+        }
 
         System.out.println("Customer: " + currentOrder.getCustomerName());
         System.out.println("Status: " +  currentOrder.getStatus());
@@ -78,25 +92,36 @@ public class ConsoleMenu {
     }
 
     private void payOrder(){
-        // TODO: check if order exists
+        if (!hasCurrentOrder()) {
+            return;
+        }
 
         System.out.println("""
                 Select payment method:
                 1. Credit Card
                 2. PayPal
                 3. Gift Card
+                4. Crypto
                 """);
-        int option = Integer.parseInt(scanner.nextLine());
+        try {
+            int option = Integer.parseInt(scanner.nextLine());
 
-        PaymentMethod paymentMethod = switch(option){
-            case 1 -> createCreditCardPayment();
-            case 2 -> createPaypalPayment();
-            case 3 -> createGiftCardPayment();
-            default -> throw new IllegalArgumentException("Invalid payment method");
-        };
+            PaymentMethod paymentMethod = switch(option){
+                case 1 -> createCreditCardPayment();
+                case 2 -> createPaypalPayment();
+                case 3 -> createGiftCardPayment();
+                case 4 -> createCryptoPayment();
+                default -> throw new IllegalArgumentException("Invalid payment method");
+            };
 
-        PaymentResult result = paymentProcessor.process(currentOrder, paymentMethod);
-        System.out.println(result.getMessage());
+            PaymentResult result = paymentProcessor.process(currentOrder, paymentMethod);
+            System.out.println(result.getMessage());
+            if (result.isSuccessful()) {
+                orderRepository.save(currentOrder);
+            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println(e.getMessage());
+        }
     }
 
     private PaymentMethod createCreditCardPayment(){
@@ -110,13 +135,28 @@ public class ConsoleMenu {
     }
 
     private  PaymentMethod createPaypalPayment(){
-        // TODO
-        return null;
+        System.out.println("PayPal email:");
+        String email =  scanner.nextLine();
+
+        return PaymentMethodFactory.createPayPalPayment(email);
     }
 
     private PaymentMethod createGiftCardPayment(){
-        // TODO
-        return null;
+        System.out.println("Gift Card code:");
+        String code =  scanner.nextLine();
+
+        System.out.println("Gift Card balance:");
+        String balanceString =  scanner.nextLine();
+        double balance = Double.parseDouble(balanceString);
+
+        return PaymentMethodFactory.createGiftCardPayment(code, balance);
+    }
+
+    private PaymentMethod createCryptoPayment(){
+        System.out.println("Wallet address:");
+        String walletAddress = scanner.nextLine();
+
+        return PaymentMethodFactory.createCryptoPayment(walletAddress);
     }
 
     private void printMenu(){
@@ -127,5 +167,13 @@ public class ConsoleMenu {
                 4. Pay order
                 0. Exit
                 """);
+    }
+
+    private boolean hasCurrentOrder() {
+        if (currentOrder == null) {
+            System.out.println("Create an order first.");
+            return false;
+        }
+        return true;
     }
 }

@@ -1,5 +1,7 @@
 package org.example.model;
 
+import org.example.config.AppConfig;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,17 +18,28 @@ public class Order {
     }
 
     public void addItem(OrderItem item){
-        // TODO: prevent adding items if order is already paid
+        if(this.status == OrderStatus.PAID){
+            throw new IllegalStateException("Cannot add item, order already paid.");
+        }
         items.add(item);
     }
 
     public double calculateTotal(){
-        // TODO: calculate total from all order items (including discounts)
-        return 0;
+        double subtotal = 0;
+        for(OrderItem item : items){
+            subtotal += item.calculateTotal();
+        }
+
+        double discountedTotal = discount.apply(subtotal);
+        double tax = discountedTotal * AppConfig.getInstance().getTaxRate();
+
+        return discountedTotal + tax;
     }
 
     public void markAsPaid(){
-        // TODO: validate order is not empty
+        if(this.items.isEmpty()){
+            throw new IllegalStateException("Order is empty.");
+        }
         this.status = OrderStatus.PAID;
     }
 
@@ -62,7 +75,9 @@ public class Order {
             return this;
         }
         public Order build(){
-            // TODO: validate customerName
+            if (customerName == null || customerName.isBlank()) {
+                throw new IllegalArgumentException("Customer name must be provided.");
+            }
             return new Order(this);
         }
     }
